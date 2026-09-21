@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Git Changelog Generator — Turn Commit History Into User-Facing Changelogs</title>
+  <meta name="description" content="Paste your git log and instantly get a formatted, user-facing changelog grouped by features, bug fixes, and improvements. Free, no signup, client-side only.">
+  <meta property="og:title" content="Git Changelog Generator">
+  <meta property="og:description" content="Turn your messy git log into a clean user-facing changelog in seconds. Free, no signup.">
+  <meta property="og:url" content="https://lior-seats.github.io/git-changelog-generator/">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Git Changelog Generator — Free">
+  <meta name="twitter:description" content="Paste your git log, get a clean user-facing changelog grouped by features, fixes, and improvements.">
+  <link rel="canonical" href="https://lior-seats.github.io/git-changelog-generator/">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f1117; color: #e2e8f0; min-height: 100vh; line-height: 1.6; }
+    a { color: #63b3ed; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    header { background: linear-gradient(135deg, #1a202c 0%, #2d3748 100%); border-bottom: 1px solid #2d3748; padding: 2.5rem 1.5rem 2rem; text-align: center; }
+    header h1 { font-size: 2rem; font-weight: 700; color: #f7fafc; margin-bottom: 0.5rem; }
+    header p { color: #a0aec0; max-width: 580px; margin: 0 auto; font-size: 1.05rem; }
+    .badge { display: inline-block; background: #2d3748; border: 1px solid #4a5568; color: #a0aec0; font-size: 0.78rem; border-radius: 4px; padding: 2px 8px; margin-top: 0.75rem; }
+    .container { max-width: 1100px; margin: 0 auto; padding: 2rem 1.5rem; }
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+    @media (max-width: 700px) { .two-col { grid-template-columns: 1fr; } }
+    .card { background: #1a202c; border: 1px solid #2d3748; border-radius: 10px; padding: 1.5rem; }
+    .card h2 { font-size: 1rem; color: #cbd5e0; margin-bottom: 1rem; font-weight: 600; }
+    label { font-size: 0.85rem; color: #a0aec0; margin-bottom: 0.35rem; display: block; font-weight: 500; }
+    .hint { font-size: 0.75rem; color: #718096; margin-top: 0.3rem; }
+    textarea { width: 100%; background: #2d3748; border: 1px solid #4a5568; color: #e2e8f0; border-radius: 6px; padding: 0.75rem; font-family: 'SFMono-Regular', Consolas, monospace; font-size: 0.82rem; resize: vertical; outline: none; line-height: 1.5; }
+    textarea:focus { border-color: #63b3ed; }
+    .options-row { display: flex; align-items: center; gap: 1.5rem; margin: 0.75rem 0; flex-wrap: wrap; }
+    .checkbox-label { display: flex; align-items: center; gap: 0.4rem; font-size: 0.85rem; color: #a0aec0; cursor: pointer; }
+    .checkbox-label input { accent-color: #63b3ed; cursor: pointer; }
+    .btn-generate { width: 100%; padding: 0.8rem; font-size: 1rem; font-weight: 700; border-radius: 8px; border: none; cursor: pointer; background: linear-gradient(135deg, #6b46c1, #553c9a); color: #fff; transition: opacity 0.15s; margin-top: 0.75rem; }
+    .btn-generate:hover { opacity: 0.88; }
+    .output-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem; flex-wrap: wrap; gap: 0.5rem; }
+    .copy-btns { display: flex; gap: 0.5rem; }
+    .btn-copy { background: #2d3748; border: 1px solid #4a5568; color: #e2e8f0; border-radius: 5px; padding: 0.35rem 0.75rem; font-size: 0.82rem; font-weight: 600; cursor: pointer; transition: background 0.1s; }
+    .btn-copy:hover { background: #4a5568; }
+    .btn-copy.copied { background: #1c4532; border-color: #276749; color: #68d391; }
+    #output-preview { min-height: 300px; }
+    .changelog-section { margin-bottom: 1.25rem; }
+    .changelog-section h3 { font-size: 0.95rem; font-weight: 700; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.4rem; }
+    .changelog-section ul { list-style: none; padding: 0; }
+    .changelog-section li { font-size: 0.88rem; color: #cbd5e0; padding: 0.2rem 0; padding-left: 1.2rem; position: relative; }
+    .changelog-section li::before { content: '—'; position: absolute; left: 0; color: #4a5568; }
+    .raw-md { background: #0f1117; border: 1px solid #2d3748; border-radius: 6px; padding: 1rem; font-family: 'SFMono-Regular', Consolas, monospace; font-size: 0.8rem; color: #a0aec0; white-space: pre-wrap; word-break: break-word; max-height: 280px; overflow-y: auto; margin-top: 0.75rem; display: none; }
+    .stats-row { display: flex; gap: 1rem; margin-bottom: 1rem; flex-wrap: wrap; }
+    .stat-pill { background: #2d3748; border: 1px solid #4a5568; border-radius: 20px; padding: 0.2rem 0.8rem; font-size: 0.78rem; color: #a0aec0; }
+    .stat-pill span { font-weight: 700; color: #e2e8f0; }
+    .empty-state { text-align: center; color: #4a5568; padding: 3rem 1rem; font-size: 0.9rem; }
+    .empty-state .icon { font-size: 2rem; margin-bottom: 0.5rem; }
+    .cta-card { background: linear-gradient(135deg, #2d1f4a, #3b2e6b); border: 1px solid #6b46c1; border-radius: 10px; padding: 1.75rem; text-align: center; margin-bottom: 1.5rem; }
+    .cta-card h3 { font-size: 1.15rem; color: #f7fafc; margin-bottom: 0.5rem; }
+    .cta-card p { color: #c4b5fd; font-size: 0.92rem; margin-bottom: 1.25rem; max-width: 480px; margin-left:auto; margin-right:auto; }
+    .btn-cta { display: inline-block; background: #6b46c1; color: #fff; padding: 0.75rem 1.75rem; border-radius: 7px; font-weight: 700; font-size: 0.95rem; border: 1px solid #805ad5; transition: background 0.15s; text-decoration: none; }
+    .btn-cta:hover { background: #805ad5; text-decoration: none; }
+    .tab-row { display: flex; gap: 0.5rem; margin-bottom: 0.75rem; }
+    .tab-btn { background: #2d3748; border: 1px solid #4a5568; color: #a0aec0; border-radius: 5px; padding: 0.3rem 0.75rem; font-size: 0.82rem; cursor: pointer; transition: all 0.1s; }
+    .tab-btn.active { background: #4a5568; color: #f7fafc; border-color: #718096; }
+    footer { text-align: center; padding: 2rem 1.5rem; color: #4a5568; font-size: 0.82rem; border-top: 1px solid #1a202c; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>📝 Git Changelog Generator</h1>
+  <p>Paste your git log and get a clean, user-facing changelog grouped by features, bug fixes, and improvements.</p>
+  <div class="badge">Free · No signup · Runs entirely in your browser</div>
+</header>
+
+<div class="container">
+  <div class="two-col">
+
+    <!-- Input -->
+    <div class="card">
+      <h2>⌨️ Paste your git log</h2>
+      <label>Git log output</label>
+      <textarea id="input" rows="18" placeholder="Paste output of: git log --oneline&#10;or: git log --pretty=format:&quot;%s&quot;"></textarea>
+      <div class="hint">Accepts: <code>git log --oneline</code>, <code>git log --pretty=format:"%s"</code>, or raw <code>git log</code> output</div>
+
+      <div class="options-row">
+        <label class="checkbox-label">
+          <input type="checkbox" id="show-internal"> Show internal commits (chore/ci/test)
+        </label>
+        <label class="checkbox-label">
+          <input type="checkbox" id="show-skipped"> Show skipped commits
+        </label>
+      </div>
+
+      <div style="margin-bottom:0.75rem">
+        <label>Version / date label (optional)</label>
+        <input type="text" id="version" placeholder="e.g. v1.4.0 — September 2026" style="width:100%;background:#2d3748;border:1px solid #4a5568;color:#e2e8f0;border-radius:6px;padding:0.55rem 0.8rem;font-size:0.9rem;outline:none;">
+      </div>
+
+      <button class="btn-generate" onclick="generate()">Generate changelog →</button>
+    </div>
+
+    <!-- Output -->
+    <div class="card">
+      <div class="output-header">
+        <h2>📋 Changelog output</h2>
+        <div class="copy-btns">
+          <button class="btn-copy" id="copy-md-btn" onclick="copyMarkdown()">Copy Markdown</button>
+          <button class="btn-copy" id="copy-html-btn" onclick="copyHtml()">Copy HTML</button>
+        </div>
+      </div>
+      <div class="tab-row">
+        <button class="tab-btn active" id="tab-preview" onclick="switchTab('preview')">Preview</button>
+        <button class="tab-btn" id="tab-raw" onclick="switchTab('raw')">Raw Markdown</button>
+      </div>
+      <div id="output-preview">
+        <div class="empty-state">
+          <div class="icon">📋</div>
+          Paste your git log on the left and click Generate
+        </div>
+      </div>
+      <div class="raw-md" id="output-raw"></div>
+      <div class="stats-row" id="stats-row" style="display:none;margin-top:0.75rem"></div>
+    </div>
+
+  </div>
+
+  <!-- CTA -->
+  <div class="cta-card">
+    <h3>🔄 Want this automated from every merge?</h3>
+    <p>PushLog connects to your GitHub repos, generates a polished changelog entry on every PR merge, and publishes it automatically — to your public changelog page, Slack, email, or an embeddable widget.</p>
+    <a href="https://lior-seats.github.io/pushlog-waitlist/" class="btn-cta">Join the PushLog waitlist →</a>
+    <div style="margin-top:0.75rem;font-size:0.82rem;color:#a78bfa">3 months free for waitlist members</div>
+  </div>
+
+  <!-- Cross link -->
+  <div class="card" style="text-align:center;padding:1.25rem">
+    <p style="color:#a0aec0;font-size:0.88rem">
+      Also checking API deprecation warnings?
+      <a href="https://lior-seats.github.io/api-deprecation-checker/">Check for Sunset/Deprecation headers → free tool</a>
+    </p>
+  </div>
+</div>
+
+<footer>
+  Built by <a href="https://lior-seats.github.io/">lior-seats</a> ·
+  <a href="https://lior-seats.github.io/pushlog-waitlist/">PushLog — automated changelogs</a> ·
+  <a href="https://lior-seats.github.io/blog/git-changelog-automation.html">How to auto-generate changelogs</a>
+</footer>
+
+<script>
+const SAMPLE = `feat: add Stripe webhook event filtering
+fix: webhooks failing for endpoints with redirects
+chore: update dependencies
+feat: add retry count display in dashboard
+fix: race condition in concurrent webhook processing
+refactor: extract webhook dispatcher to separate module
+feat: support multiple alert channels (Slack, email)
+docs: add setup guide for GitHub webhooks
+chore: ci pipeline improvements
+fix: memory leak in long-running webhook watchers
+wip: experimenting with batch processing
+finally fixed the thing
+more fixes
+added the new export feature
+removed deprecated endpoints`;
+
+document.getElementById('input').value = SAMPLE;
+
+const CATEGORIES = [
+  { id: 'feat',    icon: '✨', label: 'New Features',   patterns: [/^feat(?:\(.+?\))?:?\s+/i, /^feature(?:\(.+?\))?:?\s+/i, /^add(?:ed)?\s+/i, /\bnew\s+/i] },
+  { id: 'fix',     icon: '🐛', label: 'Bug Fixes',      patterns: [/^fix(?:\(.+?\))?:?\s+/i, /^bugfix:?\s+/i, /^hotfix:?\s+/i, /^fixed\s+/i, /^resolv/i] },
+  { id: 'perf',    icon: '🔧', label: 'Improvements',   patterns: [/^perf(?:\(.+?\))?:?\s+/i, /^improve(?:d|ment)?:?\s+/i, /^refactor(?:\(.+?\))?:?\s+/i, /^updat/i] },
+  { id: 'docs',    icon: '📝', label: 'Documentation',  patterns: [/^docs?(?:\(.+?\))?:?\s+/i] },
+  { id: 'remove',  icon: '🗑️', label: 'Removed',        patterns: [/^remov/i, /^deprecat/i, /^delet/i] },
+  { id: 'internal',icon: '⚙️', label: 'Internal',       patterns: [/^chore(?:\(.+?\))?:?\s+/i, /^ci(?:\(.+?\))?:?\s+/i, /^build(?:\(.+?\))?:?\s+/i, /^test(?:\(.+?\))?:?\s+/i, /^style(?:\(.+?\))?:?\s+/i, /^wip:?\s+/i, /^wip$/i] },
+];
+
+const SKIP_PATTERNS = [/^merge\s+/i, /^revert\s+/i, /^\s*$/];
+
+function extractSubject(line) {
+  // git log --oneline: "abc1234 message"
+  let m = line.match(/^[0-9a-f]{5,15}\s+(.+)$/i);
+  if (m) return m[1].trim();
+  // "commit abc..." multi-line format — skip these lines
+  if (/^commit\s+[0-9a-f]{40}/i.test(line)) return null;
+  if (/^Author:|^Date:|^Merge:/i.test(line)) return null;
+  // Raw subject lines
+  return line.trim() || null;
+}
+
+function stripPrefix(text, patterns) {
+  for (const p of patterns) {
+    text = text.replace(p, '');
+  }
+  return text.trim();
+}
+
+function classify(subject) {
+  for (const cat of CATEGORIES) {
+    for (const p of cat.patterns) {
+      if (p.test(subject)) {
+        const clean = stripPrefix(subject, cat.patterns);
+        return { cat, clean };
+      }
+    }
+  }
+  return { cat: null, clean: subject };
+}
+
+function capitalize(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : s; }
+
+let lastMarkdown = '';
+let lastHtml = '';
+
+function generate() {
+  const raw = document.getElementById('input').value.trim();
+  const showInternal = document.getElementById('show-internal').checked;
+  const showSkipped = document.getElementById('show-skipped').checked;
+  const version = document.getElementById('version').value.trim();
+
+  if (!raw) { alert('Paste some git log output first.'); return; }
+
+  const lines = raw.split('\n');
+  const grouped = {};
+  for (const cat of CATEGORIES) grouped[cat.id] = [];
+  const unclassified = [];
+  const skipped = [];
+  let total = 0;
+
+  for (const line of lines) {
+    const subject = extractSubject(line);
+    if (!subject) continue;
+    if (SKIP_PATTERNS.some(p => p.test(subject))) { skipped.push(subject); continue; }
+    total++;
+
+    const { cat, clean } = classify(subject);
+    if (cat) {
+      grouped[cat.id].push(capitalize(clean));
+    } else {
+      unclassified.push(capitalize(subject));
+    }
+  }
+
+  // Build markdown
+  const sections = [];
+  const header = version ? `## ${version}` : `## Changelog`;
+  sections.push(header);
+  sections.push('');
+
+  let featuredCats = CATEGORIES.filter(c => c.id !== 'internal');
+  for (const cat of featuredCats) {
+    const items = grouped[cat.id];
+    if (items.length === 0) continue;
+    sections.push(`### ${cat.icon} ${cat.label}`);
+    for (const item of items) sections.push(`- ${item}`);
+    sections.push('');
+  }
+
+  if (unclassified.length > 0) {
+    sections.push(`### 📌 Other changes`);
+    for (const item of unclassified) sections.push(`- ${item}`);
+    sections.push('');
+  }
+
+  if (showInternal && grouped['internal'].length > 0) {
+    sections.push(`### ⚙️ Internal`);
+    for (const item of grouped['internal']) sections.push(`- ${item}`);
+    sections.push('');
+  }
+
+  if (showSkipped && skipped.length > 0) {
+    sections.push(`### 🚫 Skipped`);
+    for (const item of skipped) sections.push(`- ${item}`);
+    sections.push('');
+  }
+
+  lastMarkdown = sections.join('\n').trim();
+
+  // Build HTML preview
+  let previewHtml = '';
+  if (version) previewHtml += `<h2 style="color:#f7fafc;font-size:1.1rem;margin-bottom:1rem">${esc(version)}</h2>`;
+
+  for (const cat of featuredCats) {
+    const items = grouped[cat.id];
+    if (items.length === 0) continue;
+    previewHtml += `<div class="changelog-section"><h3>${cat.icon} ${cat.label}</h3><ul>`;
+    for (const item of items) previewHtml += `<li>${esc(item)}</li>`;
+    previewHtml += `</ul></div>`;
+  }
+
+  if (unclassified.length > 0) {
+    previewHtml += `<div class="changelog-section"><h3>📌 Other changes</h3><ul>`;
+    for (const item of unclassified) previewHtml += `<li>${esc(item)}</li>`;
+    previewHtml += `</ul></div>`;
+  }
+
+  if (showInternal && grouped['internal'].length > 0) {
+    previewHtml += `<div class="changelog-section"><h3>⚙️ Internal</h3><ul>`;
+    for (const item of grouped['internal']) previewHtml += `<li>${esc(item)}</li>`;
+    previewHtml += `</ul></div>`;
+  }
+
+  if (!previewHtml) {
+    previewHtml = '<div class="empty-state"><div class="icon">🤷</div>No meaningful commits found. Try a different format.</div>';
+  }
+
+  lastHtml = previewHtml;
+  document.getElementById('output-preview').innerHTML = previewHtml;
+  document.getElementById('output-raw').textContent = lastMarkdown;
+
+  // Stats
+  const feat = grouped['feat'].length;
+  const fix = grouped['fix'].length;
+  const other = grouped['perf'].length + grouped['docs'].length + grouped['remove'].length + unclassified.length;
+  const internal = grouped['internal'].length;
+  const statsHtml = `
+    <div class="stat-pill">Total: <span>${total}</span></div>
+    ${feat > 0 ? `<div class="stat-pill">✨ Features: <span>${feat}</span></div>` : ''}
+    ${fix > 0 ? `<div class="stat-pill">🐛 Fixes: <span>${fix}</span></div>` : ''}
+    ${other > 0 ? `<div class="stat-pill">🔧 Other: <span>${other}</span></div>` : ''}
+    ${internal > 0 ? `<div class="stat-pill">⚙️ Internal: <span>${internal}</span></div>` : ''}
+  `;
+  document.getElementById('stats-row').innerHTML = statsHtml;
+  document.getElementById('stats-row').style.display = 'flex';
+}
+
+function esc(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function switchTab(tab) {
+  document.getElementById('tab-preview').classList.toggle('active', tab === 'preview');
+  document.getElementById('tab-raw').classList.toggle('active', tab === 'raw');
+  document.getElementById('output-preview').style.display = tab === 'preview' ? 'block' : 'none';
+  document.getElementById('output-raw').style.display = tab === 'raw' ? 'block' : 'none';
+}
+
+function copyMarkdown() {
+  if (!lastMarkdown) { alert('Generate a changelog first.'); return; }
+  navigator.clipboard.writeText(lastMarkdown).then(() => {
+    const btn = document.getElementById('copy-md-btn');
+    btn.textContent = 'Copied!'; btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'Copy Markdown'; btn.classList.remove('copied'); }, 2000);
+  });
+}
+
+function copyHtml() {
+  if (!lastHtml) { alert('Generate a changelog first.'); return; }
+  navigator.clipboard.writeText(lastHtml).then(() => {
+    const btn = document.getElementById('copy-html-btn');
+    btn.textContent = 'Copied!'; btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'Copy HTML'; btn.classList.remove('copied'); }, 2000);
+  });
+}
+</script>
+</body>
+</html>
